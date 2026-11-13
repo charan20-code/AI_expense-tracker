@@ -1,6 +1,6 @@
 # Pennywise — Streamlit Expense Tracker
 
-A beginner-friendly college mini-project built with **Streamlit**, **Python**, and **SQLite**. The app is a single Python file; there is no separate Flask backend or API. Streamlit runs the Python app on your computer, and SQLite saves expenses between runs.
+A beginner-friendly college mini-project built with **Streamlit**, **Python**, and **SQLite**. The app is a single Python file with no separate Flask backend. Streamlit runs it on your computer, SQLite saves expenses between runs, and the optional AI coach runs locally with Ollama.
 
 ## What it does
 
@@ -9,6 +9,7 @@ A beginner-friendly college mini-project built with **Streamlit**, **Python**, a
 - Search expenses by description, category, or date.
 - Delete a selected expense.
 - Save data locally in `expenses.db`.
+- Ask the optional local AI Spending Coach for insights based on aggregated totals.
 
 ## Requirements
 
@@ -49,6 +50,16 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 ```
 
 Streamlit will print a local address in the terminal. Open **http://localhost:8501** in your browser. The address works only on your computer while Streamlit is running. Keep the terminal open; press **Ctrl+C** there to stop the app. Start it again later with `streamlit run app.py`.
+
+## Enable the AI Spending Coach
+
+The coach runs on your computer using [Ollama for Windows](https://ollama.com/download/windows) and the `llama3.2:3b` model. Install Ollama, open a new VS Code terminal, then download the model once:
+
+```powershell
+ollama pull llama3.2:3b
+```
+
+Keep Ollama running while you use the tracker. Start the app as usual; open **AI Spending Coach** and ask a question. The coach sends the question and aggregated expense totals to Ollama at `localhost` on your computer. Expense details are not sent to an online AI service. This uses your computer's storage and processing power; response speed depends on your computer.
 
 ## Project files
 

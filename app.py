@@ -1,6 +1,9 @@
 from datetime import date
+import json
 import sqlite3
 from pathlib import Path
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 import pandas as pd
 import streamlit as st
@@ -11,6 +14,7 @@ DATABASE = APP_DIR / "expenses.db"
 CATEGORIES = ["Food", "Transport", "Shopping", "Bills", "Education", "Health", "Entertainment", "Other"]
 
 st.set_page_config(page_title="Pennywise | Expense Tracker", page_icon="💸", layout="wide")
+LOCAL_MODEL = "llama3.2:3b"
 
 
 def connect_db():
@@ -63,6 +67,50 @@ metric1, metric2, metric3 = st.columns(3)
 metric1.metric("Total spent", f"₹{total:,.2f}")
 metric2.metric("Expenses logged", len(expenses))
 metric3.metric("Categories used", category_count)
+
+with st.expander("✨ AI Spending Coach", expanded=False):
+    st.write("Ask for a short insight or spending summary based on your category totals.")
+    st.caption("The coach runs locally through Ollama. Your expense summaries stay on this computer.")
+    coach_question = st.text_input("What would you like to understand?", placeholder="Which category takes the largest share?")
+    if st.button("Ask the coach", type="primary"):
+        if expenses.empty:
+            st.info("Add some expenses first so the coach has totals to analyze.")
+        elif not coach_question.strip():
+            st.warning("Enter a question first.")
+        else:
+            try:
+                category_totals = expenses.groupby("category")["amount"].sum().sort_values(ascending=False)
+                summary = {
+                    "total_spent_in_rupees": round(total, 2),
+                    "expense_count": int(len(expenses)),
+                    "category_totals_in_rupees": {name: round(float(value), 2) for name, value in category_totals.items()},
+                }
+                prompt = (
+                    "You are a helpful personal expense tracking coach. Give concise, practical observations. "
+                    "Do not invent trends or dates; the data contains only all-time totals. Do not give investment advice.\n\n"
+                    f"Expense summary: {json.dumps(summary)}\n"
+                    f"User question: {coach_question.strip()}"
+                )
+                request = Request(
+                    "http://localhost:11434/api/chat",
+                    data=json.dumps({
+                        "model": LOCAL_MODEL,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "stream": False,
+                    }).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                with urlopen(request, timeout=180) as result:
+                    answer = json.loads(result.read().decode("utf-8"))["message"]["content"]
+                st.markdown(answer)
+            except HTTPError as error:
+                st.error(f"Ollama returned an error: {error.read().decode('utf-8', errors='replace')}")
+            except URLError:
+                st.error("Ollama is not running. Open the Ollama app, then try again.")
+            except (KeyError, json.JSONDecodeError, TimeoutError) as error:
+                st.error(f"Could not read the local model response: {error}")
+    st.caption(f"Local model: {LOCAL_MODEL}. Download it once with `ollama pull {LOCAL_MODEL}`.")
 
 st.divider()
 left, right = st.columns([0.9, 1.1], gap="large")
